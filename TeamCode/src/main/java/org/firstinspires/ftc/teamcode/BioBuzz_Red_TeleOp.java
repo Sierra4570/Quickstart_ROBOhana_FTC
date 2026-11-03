@@ -25,13 +25,10 @@ public class BioBuzz_Red_TeleOp extends OpMode {
 
     private Limelight3A limelight;
 
-    GoBildaPinpointDriver imu;
-
+    //---Pedro---
     private Follower follower;
 
     //---Meccanum---
-    final Meccanum_drive drive = new Meccanum_drive();
-
     double forward, strafe, rotate;
 
     //---Launcher & Intake---
@@ -77,27 +74,20 @@ public class BioBuzz_Red_TeleOp extends OpMode {
         ms.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
 
-        //---Meccanum---
-        drive.init(hardwareMap);
-
         //---LimeLight---
         limelight = hardwareMap.get(Limelight3A.class, "limelight");
         limelight.pipelineSwitch(0);
+        limelight.shutdown();
         telemetry.setMsTransmissionInterval(11);
 
-        //---PinPoint---
-        imu = hardwareMap.get(GoBildaPinpointDriver.class, "pinpoint");
-        configurePinpoint();
-
-        imu.setPosition(new Pose2D(DistanceUnit.MM, 0, 0, AngleUnit.RADIANS, 0));
-
+        //---Pedro---
         follower = Constants.create(hardwareMap);
-        //---LED--- removed to test
+        //---LED--- WERE SO BACK
         led_chain = hardwareMap.get(Servo.class, "led_chain");
     }
 
     public double getHeading() {
-        return imu.getHeading(AngleUnit.RADIANS);
+        return follower.pose().heading();
     }
 
     @Override
@@ -108,11 +98,8 @@ public class BioBuzz_Red_TeleOp extends OpMode {
 
     @Override
     public void loop() {
-        //---GamePad 1---
-        //---Mechanum Drive Inputs---
 
-
-
+        //---LimeLight loop---
         limelight.updateRobotOrientation(getHeading());
         LLResult llResult = limelight.getLatestResult();
         if (llResult != null && llResult.isValid()) {
@@ -129,13 +116,23 @@ public class BioBuzz_Red_TeleOp extends OpMode {
         //---Get April tag info---
         assert llResult != null;
         double tx = llResult.getTx();
+
+        //---GamePad 1---
+        //---Mechanum Drive Inputs---
+
+        DrivePowers powers = ManualDrive.fieldCentric(
+                forward = -gamepad1.left_stick_y,
+                strafe = -gamepad1.left_stick_x,
+                rotate = -gamepad1.right_stick_x,
+                follower.pose().heading()
+        );
+
+        follower.manual(powers);
+        follower.update();
+
         //---Auto Align---
         if (gamepad1.right_trigger > 0.3){
-            forward = gamepad1.left_stick_y;
-            strafe = -gamepad1.left_stick_x;
-            rotate = -gamepad1.right_stick_x;
 
-            drive.drive(forward,strafe,rotate);
             if (tx != 0) {
                 error = goalX - tx;
 
@@ -162,22 +159,12 @@ public class BioBuzz_Red_TeleOp extends OpMode {
         } else {
             lastError = 0;
             lastTime = getRuntime();
-
-            DrivePowers powers = ManualDrive.fieldCentric(
-                    forward = -gamepad1.left_stick_y,
-                    strafe = -gamepad1.left_stick_x,
-                    rotate = -gamepad1.right_stick_x,
-                    follower.pose().heading()
-            );
-
-            ManualDrive.driveOrHold(follower, powers);
-            follower.update();
         }
 
         //---GamePad 2---
         //---Main Shooter---
         if (gamepad2.left_trigger > 0.3){
-            ms.setPower(0.50); //5375 okay - 0.60 too powerful 0.515
+            ms.setPower(0.53); //5375 okay - 0.60 too powerful 0.515
         } else {
             ms.setPower(0);
         }
@@ -230,18 +217,6 @@ public class BioBuzz_Red_TeleOp extends OpMode {
         telemetry.addData("Intake Power", mi.getPower());
         telemetry.addData("Load Wheel Power", lw.getPower());
         telemetry.addData("ms position", ms.getCurrentPosition());
-    }
-
-    public void configurePinpoint(){
-        //Odometry pod positions
-        imu.setOffsets(-22.0, -155.0, DistanceUnit.MM);
-        //Pod Types
-        imu.setEncoderResolution(GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD);
-        //Pod directions
-        imu.setEncoderDirections(GoBildaPinpointDriver.EncoderDirection.FORWARD,
-                GoBildaPinpointDriver.EncoderDirection.FORWARD);
-        //IMU auto calibrate
-        imu.resetPosAndIMU();
     }
 
 

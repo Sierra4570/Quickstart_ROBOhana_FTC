@@ -49,7 +49,7 @@ public class Pedro_Auto_1 extends LinearOpMode {
         return Command.build()
                 .setExecute(() -> {
                     if (getRuntime() > 5) {
-                        mspower = 0.50;
+                        mspower = 0.55;
                     }
                     if (getRuntime() > 10) {
                         lwpower = 1;
